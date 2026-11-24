@@ -19,19 +19,22 @@ loose exits, no pyramiding:
   last trade a buy), creator not sold, dev buy ≤ 10 SOL. One entry per coin,
   0.30 SOL stake. (A 50 SOL second-chance crossing and a pullback "second wind"
   entry were both tested and removed — each halved the full-window PnL.)
-- **Exits — loose on purpose:** −12.5% stop, +50% take-profit on a third,
-  +190% full exit, 5000-slot max hold, no trailing stop, no flow/dev exits.
-  Eager exits cut the runners that pay for everything.
+- **Exits — loose on price, tight on time:** −12.5% stop, +50% take-profit on
+  a third, +190% full exit, 200-slot max hold, no trailing stop, no flow/dev
+  exits. Eager price exits cut the runners that pay for everything, but a
+  long hold is fragile: the stress copies rebuild each coin's flow from blocks
+  of other coins' trades (mean block 8 trades), so multi-block persistence is
+  broken — a 1500-slot hold scored +1.29 on dev but a −0.22 SOL stress median.
 - **Risk limits:** max 5 open positions, max 2.0 SOL at cost.
 - **Guardrail probe:** if coins traded lag a 30-coin pace over 6h of block
   time, 0.01 SOL probe round trips (max 8) keep the run above the 20-coin
   minimum.
 
 Measured on the full 24h dev window (local replay port of the kit harness):
-+1.21 SOL net, ex-top-3 −0.13 SOL, max drawdown ~4%, positive on every
-fail-tx seed (+0.78…+1.33 SOL) and at 2x fees (+0.63 SOL). A pullback
-"second wind" entry was tested and removed — it lost on its own and dragged
-the combined bot down.
++0.79 SOL net, ex-top-3 −0.33 SOL, max drawdown ~3.8%, positive on every
+fail-tx seed (+0.69…+0.80 SOL) and at 2x fees (+0.57 SOL); first ~11h −0.03
+SOL, last ~13h +0.77 SOL. A pullback "second wind" entry was tested and
+removed — it lost on its own and dragged the combined bot down.
 
 Deterministic: no clock, no randomness, no I/O — the two graded executions
 produce byte-identical action logs.
