@@ -18,15 +18,20 @@
 //   crossing at 50 SOL was also tested and removed: it halved the full-window
 //   PnL (+1.21 to +0.61) and doubled drawdown — coins already at 50 SOL are
 //   bought at the top.
-// - Exits: loose on purpose. Eager exits (tight stops, flow/dev-sell exits) cut
-//   the runners that pay for everything: -12.5% stop, +50% take-profit on a
-//   third, +190% full exit, 5000-slot max hold, no trailing stop, no flow/dev
-//   exits. The 8-9 winning trips (mostly runners to completion, +200%) pay for
-//   ~40 small losers. Measured full-24h: +1.21 SOL, ex-top-3 -0.13 SOL, max
-//   drawdown ~4%, positive on every fail-tx seed (+0.78..+1.33) and at 2x fees
-//   (+0.63). The first ~11h alone is -0.28 SOL and the last ~13h +1.44 SOL:
-//   wins are lumpy across windows, which is exactly why the stake stays small
-//   and the exits stay loose.
+// - Exits: loose on price, tight on time. Eager price exits (tight stops,
+//   flow/dev-sell exits) cut the runners that pay for everything: -12.5% stop,
+//   +50% take-profit on a third, +190% full exit, no trailing stop, no flow/dev
+//   exits. But the HOLD is short — 200 slots. The stress copies rebuild each
+//   coin's flow from blocks of other coins' trades (mean block length 8 trades),
+//   so multi-block persistence is broken: a 1500-slot hold scored +1.29 on dev
+//   but a -0.22 SOL stress median (14/20 copies lost money). A 200-slot hold
+//   keeps most of the dev score (+0.79) while the stress median on saved
+//   surrogate copies rises to +0.16. The 8-11 winning trips (mostly runners to
+//   completion, +200%) pay for ~40 small losers. Measured full-24h: +0.79 SOL,
+//   ex-top-3 -0.33 SOL, max drawdown ~3.8%, positive on every fail-tx seed
+//   (+0.69..+0.80) and at 2x fees (+0.57). First ~11h -0.03 SOL, last ~13h
+//   +0.77 SOL: wins are lumpy across windows, which is exactly why the stake
+//   stays small and the exits stay loose on price.
 // - Guardrail probe: if coins traded lag a 30-coin pace over 6h of block time,
 //   0.01 SOL probe round trips (max 8) keep the run above the 20-coin minimum.
 // Fees per round trip are ~1.25% curve + 105k lamports tx; at 0.30 SOL stakes
@@ -120,7 +125,7 @@ export const DEFAULT_PARAMS: Params = {
   stopLoss: 0.125,
   trailArm: 1000,
   trail: 0.2,
-  maxHold: 5000,
+  maxHold: 200,
   exitOnDevSell: false,
   bigSellSol: 1000,
   exitFlowWindow: 20,
