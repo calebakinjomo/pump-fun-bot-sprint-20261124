@@ -15,10 +15,11 @@ loose exits, no pyramiding:
 
 - **Entry — runner crossing:** real SOL first crosses 30 SOL from below, at
   least 20 slots after creation (instant crossings are bundled launches that
-  dump), with fresh flow (3+ buys, 3+ distinct buyers over the last 15 slots,
-  last trade a buy), creator not sold, dev buy ≤ 10 SOL. One entry per coin,
-  0.30 SOL stake. (A 50 SOL second-chance crossing and a pullback "second wind"
-  entry were both tested and removed — each halved the full-window PnL.)
+  dump), with fresh flow (net +1.0 SOL, 3+ buys, 3+ distinct buyers over the
+  last 15 slots, last trade a buy), creator not sold, dev buy ≤ 10 SOL. One
+  entry per coin, 0.30 SOL stake. (A 50 SOL second-chance crossing and a
+  pullback "second wind" entry were both tested and removed — each halved the
+  full-window PnL.)
 - **Exits — loose on price, tight on time:** −12.5% stop, +50% take-profit on
   a third, +190% full exit, 200-slot max hold, no trailing stop, no flow/dev
   exits. Eager price exits cut the runners that pay for everything, but a
@@ -31,9 +32,10 @@ loose exits, no pyramiding:
   minimum.
 
 Measured on the full 24h dev window (local replay port of the kit harness):
-+0.79 SOL net, ex-top-3 −0.33 SOL, max drawdown ~3.8%, positive on every
-fail-tx seed (+0.69…+0.80 SOL) and at 2x fees (+0.57 SOL); first ~11h −0.03
-SOL, last ~13h +0.77 SOL. A pullback "second wind" entry was tested and
++0.40 SOL net, ex-top-3 −0.50 SOL, max drawdown ~3.8%, positive on every
+fail-tx seed (+0.30…+0.41 SOL) and at 2x fees (+0.20 SOL); first ~11h −0.03
+SOL, last ~13h +0.38 SOL. On 7 saved official stress copies the median is
++0.01 SOL (3/7 losing). A pullback "second wind" entry was tested and
 removed — it lost on its own and dragged the combined bot down.
 
 Deterministic: no clock, no randomness, no I/O — the two graded executions
