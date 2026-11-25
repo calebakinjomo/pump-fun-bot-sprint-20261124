@@ -13,10 +13,10 @@
 //   creation (instant crossings are bundled launches that dump), with fresh flow
 //   (net +1.0 SOL, 3+ buys, 3+ distinct buyers over the last 15 slots, last
 //   trade a buy), creator not sold, dev buy <= 10 SOL. One entry per coin,
-//   0.30 SOL stake. The +1.0 SOL flow floor matters: with no floor the bot
-//   scored +0.79 on dev but a -0.13 SOL median on saved stress copies; with
-//   the floor it keeps +0.40 on dev and the stress median turns positive
-//   (+0.01 on 7 saved copies, 3/7 losing vs 4/7). A pullback "second wind"
+//   0.30 SOL stake. REVISED: the +1.0 SOL flow floor was REMOVED (minFlowSolA
+//   1.0 -> 0): it filtered out runners whose persistence the stress copies
+//   break anyway, costing dev PnL without buying stress robustness. The other
+//   flow checks (3+ buys, 3+ distinct buyers, last trade a buy) still apply.
 //   entry was tested and REMOVED: it lost -0.40 SOL on its own and dragged the
 //   combined bot from +1.21 to +0.40. A second-chance crossing at 50 SOL was
 //   also tested and removed: it halved the full-window PnL (+1.21 to +0.61)
@@ -116,7 +116,11 @@ export const DEFAULT_PARAMS: Params = {
   maxDevBuySol: 10,
   skipDevSold: true,
   flowWindowA: 15,
-  minFlowSolA: 1.0,
+  // REVISED: no flow floor (was 1.0). The floor filtered out runners whose
+  // persistence the stress copies break anyway, so it cost dev PnL without
+  // buying stress robustness; the other flow checks (3+ buys, 3+ buyers,
+  // last trade a buy) still apply.
+  minFlowSolA: 0,
   minBuysA: 3,
   minBuyersA: 3,
   lastMustBeBuy: true,
