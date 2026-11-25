@@ -192,6 +192,72 @@ function closeValue(tokens: bigint, vq: bigint, vt: bigint, txLamports: bigint):
   return Number(q - fee - txLamports) / LAMPORTS;
 }
 
+/**
+ * Exit evaluation for one open position — the "loose on price, tight on time"
+ * exit policy, extracted from the exit loop so the rules read in one place.
+ *
+ * Evidence (full-24h dev window of this kit's dataset; stress copies rebuild
+ * each coin's flow from blocks of other coins' trades, mean block length 8):
+ * - Stop-loss -12.5% (stopLoss 0.125): small losers are cheap by design. The
+ *   8-11 winning trips (mostly runners to completion, +200%) pay for ~40
+ *   small losers; measured full-24h +0.40 SOL, ex-top-3 -0.50 SOL, max
+ *   drawdown ~3.8%.
+ * - First take-profit +50% on a third (tp1 0.5, tp1Part 0.33): banks part of
+ *   a runner early without cutting the position that pays for the losers.
+ * - Full exit +190% (tpFull 1.9): runners that complete pay ~+200%; taking
+ *   the whole position near completion is where the profit concentrates.
+ * - Max hold 200 slots (maxHold 200): a 1500-slot hold scored +1.29 SOL on
+ *   dev but a -0.22 SOL stress median (14/20 copies lost money), because
+ *   multi-block persistence is broken in the stress copies. A 200-slot hold
+ *   keeps most of the dev score (+0.79) while the stress median on saved
+ *   surrogate copies rises to +0.16.
+ * - No trailing stop (trailArm 1000, trail 0.2): the arm is never reached at
+ *   these gains, so the trailing exit is effectively off. Eager price exits
+ *   (tight stops, flow/dev-sell exits) cut the runners that pay for
+ *   everything, so they stay disabled.
+ * - No dev-sell / big-sell / flow / staleness exits (exitOnDevSell false,
+ *   bigSellSol 1000, exitFlowSol 1000, staleSlots 100000): all set far above
+ *   any realistic value, so none of them can fire; exits are price + time
+ *   only. Positive on every fail-tx seed (+0.30..+0.41) and at 2x fees
+ *   (+0.20). First ~11h -0.03 SOL, last ~13h +0.38 SOL: wins are lumpy
+ *   across windows, which is exactly why the stake stays small and the
+ *   exits stay loose on price.
+ *
+ * Pure function of its inputs: the same inputs always give the same
+ * decision, so extracting it cannot change any exit. `exitFlowNet` is the
+ * net SOL flow over the exit window (only meaningful when a coin record
+ * exists); `bigSell` is whether a single recorded sell of >= bigSellSol
+ * hit this coin. The caller still owns the two mutations the loop used to
+ * do inline: marking tp1 taken and refreshing the best value after a
+ * partial sell.
+ */
+function evaluateExit(
+  p: Params,
+  h: Held,
+  cost: number,
+  value: number,
+  gain: number,
+  now: number,
+  c: Coin | undefined,
+  bigSell: boolean,
+  exitFlowNet: number,
+): { exit: boolean; partial: boolean } {
+  let exit = false;
+  let partial = false;
+  if (!h.tookTp1 && gain >= p.tp1) partial = true;
+  if (gain >= p.tpFull) exit = true;
+  if (gain <= -p.stopLoss) exit = true;
+  if (h.best >= cost * (1 + p.trailArm) && value <= h.best * (1 - p.trail)) exit = true;
+  if (now - h.opened >= p.maxHold) exit = true;
+  if (c !== undefined) {
+    if (p.exitOnDevSell && c.devSold) exit = true;
+    if (bigSell) exit = true;
+    if (now - c.lastTradeSlot >= p.staleSlots) exit = true;
+    if (exitFlowNet < -p.exitFlowSol) exit = true;
+  }
+  return { exit, partial };
+}
+
 export function createStrategy(p: Params = DEFAULT_PARAMS): Bot {
   const coins = new Map<Pubkey, Coin>();
   const held = new Map<Pubkey, Held>();
@@ -321,19 +387,14 @@ export function createStrategy(p: Params = DEFAULT_PARAMS): Bot {
         if (value > h.best) h.best = value;
         const c = coins.get(mint);
         const gain = value / cost - 1;
-        let exit = false;
-        let partial = false;
-        if (!h.tookTp1 && gain >= p.tp1) partial = true;
-        if (gain >= p.tpFull) exit = true;
-        if (gain <= -p.stopLoss) exit = true;
-        if (h.best >= cost * (1 + p.trailArm) && value <= h.best * (1 - p.trail)) exit = true;
-        if (now - h.opened >= p.maxHold) exit = true;
-        if (c !== undefined) {
-          if (p.exitOnDevSell && c.devSold) exit = true;
-          if (bigSell.has(mint)) exit = true;
-          if (now - c.lastTradeSlot >= p.staleSlots) exit = true;
-          if (flow(c, now, p.exitFlowWindow).net < -p.exitFlowSol) exit = true;
-        }
+        // Exit rules live in evaluateExit (documented, behavior-identical):
+        // price exits (stop, tp1 partial, tpFull) + time exit (maxHold),
+        // with the dev-sell / big-sell / flow / staleness exits disabled
+        // by their far-above-realistic thresholds in DEFAULT_PARAMS.
+        // flow() is pure (no mutation), so computing its net eagerly here
+        // gives the same value the inline check used to compute.
+        const exitFlowNet = c !== undefined ? flow(c, now, p.exitFlowWindow).net : 0;
+        const { exit, partial } = evaluateExit(p, h, cost, value, gain, now, c, bigSell.has(mint), exitFlowNet);
         if (partial && !exit) {
           const part = (pos.token_amount * BigInt(Math.round(p.tp1Part * 10_000))) / 10_000n;
           if (part > 0n && part < pos.token_amount && orders.length < cap) {
