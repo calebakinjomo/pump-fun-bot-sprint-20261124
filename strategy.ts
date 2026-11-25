@@ -11,13 +11,16 @@
 // What survived testing on the full 24h dev window (this kit's dataset):
 // - Entry: real SOL first crosses 30 SOL from below, at least 20 slots after
 //   creation (instant crossings are bundled launches that dump), with fresh flow
-//   (3+ buys, 3+ distinct buyers over the last 15 slots, last trade a buy),
-//   creator not sold, dev buy <= 10 SOL. One entry per coin, 0.30 SOL stake.
-//   A pullback "second wind" entry was tested and REMOVED: it lost -0.40 SOL on
-//   its own and dragged the combined bot from +1.21 to +0.40. A second-chance
-//   crossing at 50 SOL was also tested and removed: it halved the full-window
-//   PnL (+1.21 to +0.61) and doubled drawdown — coins already at 50 SOL are
-//   bought at the top.
+//   (net +1.0 SOL, 3+ buys, 3+ distinct buyers over the last 15 slots, last
+//   trade a buy), creator not sold, dev buy <= 10 SOL. One entry per coin,
+//   0.30 SOL stake. The +1.0 SOL flow floor matters: with no floor the bot
+//   scored +0.79 on dev but a -0.13 SOL median on saved stress copies; with
+//   the floor it keeps +0.40 on dev and the stress median turns positive
+//   (+0.01 on 7 saved copies, 3/7 losing vs 4/7). A pullback "second wind"
+//   entry was tested and REMOVED: it lost -0.40 SOL on its own and dragged the
+//   combined bot from +1.21 to +0.40. A second-chance crossing at 50 SOL was
+//   also tested and removed: it halved the full-window PnL (+1.21 to +0.61)
+//   and doubled drawdown — coins already at 50 SOL are bought at the top.
 // - Exits: loose on price, tight on time. Eager price exits (tight stops,
 //   flow/dev-sell exits) cut the runners that pay for everything: -12.5% stop,
 //   +50% take-profit on a third, +190% full exit, no trailing stop, no flow/dev
@@ -27,10 +30,10 @@
 //   but a -0.22 SOL stress median (14/20 copies lost money). A 200-slot hold
 //   keeps most of the dev score (+0.79) while the stress median on saved
 //   surrogate copies rises to +0.16. The 8-11 winning trips (mostly runners to
-//   completion, +200%) pay for ~40 small losers. Measured full-24h: +0.79 SOL,
-//   ex-top-3 -0.33 SOL, max drawdown ~3.8%, positive on every fail-tx seed
-//   (+0.69..+0.80) and at 2x fees (+0.57). First ~11h -0.03 SOL, last ~13h
-//   +0.77 SOL: wins are lumpy across windows, which is exactly why the stake
+//   completion, +200%) pay for ~40 small losers. Measured full-24h: +0.40 SOL,
+//   ex-top-3 -0.50 SOL, max drawdown ~3.8%, positive on every fail-tx seed
+//   (+0.30..+0.41) and at 2x fees (+0.20). First ~11h -0.03 SOL, last ~13h
+//   +0.38 SOL: wins are lumpy across windows, which is exactly why the stake
 //   stays small and the exits stay loose on price.
 // - Guardrail probe: if coins traded lag a 30-coin pace over 6h of block time,
 //   0.01 SOL probe round trips (max 8) keep the run above the 20-coin minimum.
@@ -113,7 +116,7 @@ export const DEFAULT_PARAMS: Params = {
   maxDevBuySol: 10,
   skipDevSold: true,
   flowWindowA: 15,
-  minFlowSolA: 0,
+  minFlowSolA: 1.0,
   minBuysA: 3,
   minBuyersA: 3,
   lastMustBeBuy: true,
